@@ -2,12 +2,13 @@ import pandas
 
 from backtesting.logger import GeneralStatistics
 from backtesting.machine import Machine
-from backtesting.strategy import Momentun
+from backtesting.strategy import Momentun, NeuralNetwork
 
-s = Momentun(name='Neural')
-l = GeneralStatistics()
-m = Machine()
-m.data = pandas.read_csv('eur_usd_m5.csv')[0:3000]
-m.add_strategy(s)
-m.add_logger(l)
-m.run()
+for i in [0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]:
+    s = NeuralNetwork(i, name='Neural')
+    l = GeneralStatistics()
+    m = Machine()
+    m.data = pandas.read_csv('backtesting/eur_usd_m15_.csv')
+    m.add_strategy(s)
+    m.add_logger(l)
+    m.run()

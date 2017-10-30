@@ -1,7 +1,7 @@
 class Trade:
     def __init__(self, data, units, resistance=0, support=0):
         self.initial_date = data['date']
-        self.initial_price = data['close']
+        self.initial_price = data['open']
         self.final_date = ''
         self.final_price = 0
         self.resistance = resistance
@@ -32,19 +32,23 @@ class Trade:
     def close(self, data, **kwargs):
         if self.is_open():
             self.final_date = data['date']
-            self.final_price = data['close']
+            if 'use_price' in kwargs:
+                self.final_price = data[kwargs['use_price']]
+            else:
+                self.final_price = data['close']
             kwargs['logger'].close(self)
             return True
         return False
 
     def automatic_close(self, data, **kwargs):
         if (self.resistance or self.support) and self.is_open():
-            price = data['close']
-            if price >= self.resistance:
-                self.close(data, **kwargs)
+            price_h = data['high']
+            price_c = data['low']
+            if price_h >= self.resistance:
+                self.close(data, use_price='high', **kwargs)
                 return True
-            if price <= self.support:
-                self.close(data, **kwargs)
+            if price_c <= self.support:
+                self.close(data, use_price='low', **kwargs)
                 return True
         return False
 

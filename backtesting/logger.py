@@ -27,4 +27,5 @@ class GeneralStatistics(Logger):
         print(logger)
 
     def close(self, trade):
-        print(trade)
+        pass
+        #print(trade)

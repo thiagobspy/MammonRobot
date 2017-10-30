@@ -1,10 +1,15 @@
 import abc
 import math
+import json
 
+import numpy
 import pandas
 import talib
+from keras.models import model_from_json, Sequential
 
 from backtesting.trade import Trade
+from technical_analysis import TechnicalAnalysisComplete
+from utils import Utils
 
 
 class Strategy:
@@ -80,3 +85,62 @@ class Momentun(Strategy):
         take_profit = price * (1 - 0.002)
         stop_loss = price * (1 + 0.002)
         self.order(-1000, stop_loss, take_profit)
+
+
+class NeuralNetwork(Strategy):
+    # [1 0 0] -> buy
+    # [0 1 0] -> neutral
+    # [0 0 s1] -> sell
+    def __init__(self, conf, **kwargs):
+        super().__init__()
+
+        model_json = open('backtesting/model_(5,141)_m15.json').read()
+        self.model = model_from_json(model_json)
+        self.model.load_weights('backtesting/weights_(5,141)_m15.h5')
+        self.conf = conf
+        self.pred = 1
+
+    def execute(self):
+        if len(self.open_positions) > 0:
+            self.pred = 1
+            return
+
+        if self.pred == 0:
+            self.buy()
+        elif self.pred == 2:
+            self.sell()
+
+        self.pred = 1
+        self.pred = self.get_predication(self.conf)
+
+    def get_predication(self, conf):
+        open_ = numpy.array(self.data.iloc[0:93]['open'].values, dtype=float)
+        high = numpy.array(self.data.iloc[0:93]['high'].values, dtype=float)
+        low = numpy.array(self.data.iloc[0:93]['low'].values, dtype=float)
+        close = numpy.array(self.data.iloc[0:93]['close'].values, dtype=float)
+        volume = numpy.array(self.data.iloc[0:93]['volume'].values, dtype=float)
+
+        technical_analysis = TechnicalAnalysisComplete(open_[::-1], high[::-1], low[::-1], close[::-1], volume[::-1])
+        input_data = technical_analysis.execute()
+        data = Utils.remove_nan(input_data)
+
+        if data.shape[0] < 5:
+            return 1
+
+        predict = self.model.predict(numpy.expand_dims(data, 0))
+
+        if predict[predict > conf].shape[0]:
+            return predict.argmax()
+        return 1
+
+    def buy(self):
+        price = self.data.iloc[0]['open']
+        take_profit = price * (1 + 0.001)
+        stop_loss = price * (1 - 0.001)
+        self.order(10000, take_profit, stop_loss)
+
+    def sell(self):
+        price = self.data.iloc[0]['open']
+        take_profit = price * (1 - 0.001)
+        stop_loss = price * (1 + 0.001)
+        self.order(-10000, stop_loss, take_profit)
